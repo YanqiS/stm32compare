@@ -4614,18 +4614,22 @@ void MoC_Init() {
 		SPI_Flash_ReadBytes(ScreenSz_1.DispX1, Sys_Addr_DispX1, sizeof(int));
 		SPI_Flash_ReadBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1, sizeof(int));
 
-		ScreenSz_1.DispX0_32b = ScreenSz_1.DispX0[0]
-				+ (ScreenSz_1.DispX0[1] << 8) + (ScreenSz_1.DispX0[2] << 16)
-				+ (ScreenSz_1.DispX0[3] << 24);
-		ScreenSz_1.DispX1_32b = ScreenSz_1.DispX1[0]
-				+ (ScreenSz_1.DispX1[1] << 8) + (ScreenSz_1.DispX1[2] << 16)
-				+ (ScreenSz_1.DispX1[3] << 24);
-		ScreenSz_1.DispY0_32b = ScreenSz_1.DispY0[0]
-				+ (ScreenSz_1.DispY0[1] << 8) + (ScreenSz_1.DispY0[2] << 16)
-				+ (ScreenSz_1.DispY0[3] << 24);
-		ScreenSz_1.DispY1_32b = ScreenSz_1.DispY1[0]
-				+ (ScreenSz_1.DispY1[1] << 8) + (ScreenSz_1.DispY1[2] << 16)
-				+ (ScreenSz_1.DispY1[3] << 24);
+		ScreenSz_1.DispX0_32b = (int32_t)((uint32_t)(uint8_t)ScreenSz_1.DispX0[0]
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispX0[1] << 8)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispX0[2] << 16)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispX0[3] << 24));
+		ScreenSz_1.DispX1_32b = (int32_t)((uint32_t)(uint8_t)ScreenSz_1.DispX1[0]
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispX1[1] << 8)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispX1[2] << 16)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispX1[3] << 24));
+		ScreenSz_1.DispY0_32b = (int32_t)((uint32_t)(uint8_t)ScreenSz_1.DispY0[0]
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispY0[1] << 8)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispY0[2] << 16)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispY0[3] << 24));
+		ScreenSz_1.DispY1_32b = (int32_t)((uint32_t)(uint8_t)ScreenSz_1.DispY1[0]
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispY1[1] << 8)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispY1[2] << 16)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispY1[3] << 24));
 
 	    // ⬅️⬅️⬅️ 添加调试输出 - 显示读取的原始字节
 	    char str1[16];
@@ -4658,21 +4662,18 @@ void MoC_Init() {
 	    // 显示转换后的32位值（10进制）
 	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 0, "32bit Values:");
 
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, "X0:");
-	    itoa(ScreenSz_1.DispX0_32b, str1, 10);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,3, 1, str1);
+	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, "                " );
+	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 2, "                " );
 
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,8, 1, "X1:");
-	    itoa(ScreenSz_1.DispX1_32b, str1, 10);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,11, 1, str1);
+	    snprintf(str1, sizeof(str1), "X0:%d", ScreenSz_1.DispX0_32b);
+	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, str1);
+	    snprintf(str1, sizeof(str1), "X1:%d", ScreenSz_1.DispX1_32b);
+	    OLED_ShowString(OLED_I2C_ch ,OLED_type,8, 1, str1);
 
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 2, "Y0:");
-	    itoa(ScreenSz_1.DispY0_32b, str1, 10);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,3, 2, str1);
-
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,8, 2, "Y1:");
-	    itoa(ScreenSz_1.DispY1_32b, str1, 10);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,11, 2, str1);
+	    snprintf(str1, sizeof(str1), "Y0:%d", ScreenSz_1.DispY0_32b);
+	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 2, str1);
+	    snprintf(str1, sizeof(str1), "Y1:%d", ScreenSz_1.DispY1_32b);
+	    OLED_ShowString(OLED_I2C_ch ,OLED_type,8, 2, str1);
 
 	    HAL_Delay(3000);  // 等待3秒让你看清
 
