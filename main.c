@@ -4398,16 +4398,17 @@ void MoC_Init() {
 				}
 
 				////push down
-					ScreenSz_1.DispX0_32b = TA531_RC1.TA531_RC_X_act;
-					ScreenSz_1.DispX0[0] = TA531_RC1.TA531_RC_X_act & 0xff;
-					ScreenSz_1.DispX0[1] = (TA531_RC1.TA531_RC_X_act >> 8) & 0xff;
-					ScreenSz_1.DispX0[2] = (TA531_RC1.TA531_RC_X_act >> 16) & 0xff;
-					ScreenSz_1.DispX0[3] = (TA531_RC1.TA531_RC_X_act >> 24) & 0xff;
-					ScreenSz_1.DispY0_32b = TA531_RC1.TA531_RC_Y_act;
-					ScreenSz_1.DispY0[0] = TA531_RC1.TA531_RC_Y_act & 0xff;
-					ScreenSz_1.DispY0[1] = (TA531_RC1.TA531_RC_Y_act >> 8) & 0xff;
-					ScreenSz_1.DispY0[2] = (TA531_RC1.TA531_RC_Y_act >> 16) & 0xff;
-					ScreenSz_1.DispY0[3] = (TA531_RC1.TA531_RC_Y_act >> 24) & 0xff;
+					Clamp_Position(&TA531_RC1.TA531_RC_X_trg, &TA531_RC1.TA531_RC_Y_trg, false);
+					ScreenSz_1.DispX0_32b = TA531_RC1.TA531_RC_X_trg;
+					ScreenSz_1.DispX0[0] = TA531_RC1.TA531_RC_X_trg & 0xff;
+					ScreenSz_1.DispX0[1] = (TA531_RC1.TA531_RC_X_trg >> 8) & 0xff;
+					ScreenSz_1.DispX0[2] = (TA531_RC1.TA531_RC_X_trg >> 16) & 0xff;
+					ScreenSz_1.DispX0[3] = (TA531_RC1.TA531_RC_X_trg >> 24) & 0xff;
+					ScreenSz_1.DispY0_32b = TA531_RC1.TA531_RC_Y_trg;
+					ScreenSz_1.DispY0[0] = TA531_RC1.TA531_RC_Y_trg & 0xff;
+					ScreenSz_1.DispY0[1] = (TA531_RC1.TA531_RC_Y_trg >> 8) & 0xff;
+					ScreenSz_1.DispY0[2] = (TA531_RC1.TA531_RC_Y_trg >> 16) & 0xff;
+					ScreenSz_1.DispY0[3] = (TA531_RC1.TA531_RC_Y_trg >> 24) & 0xff;
 
 				SPI_Flash_Start(Flash_SPI);
 				SPI_Flash_WtritEnable();
@@ -4532,16 +4533,17 @@ void MoC_Init() {
 				}
 
 				////push down
-					ScreenSz_1.DispX1_32b = TA531_RC1.TA531_RC_X_act;
-					ScreenSz_1.DispX1[0] = TA531_RC1.TA531_RC_X_act & 0xff;
-					ScreenSz_1.DispX1[1] = (TA531_RC1.TA531_RC_X_act >> 8) & 0xff;
-					ScreenSz_1.DispX1[2] = (TA531_RC1.TA531_RC_X_act >> 16) & 0xff;
-					ScreenSz_1.DispX1[3] = (TA531_RC1.TA531_RC_X_act >> 24) & 0xff;
-					ScreenSz_1.DispY1_32b = TA531_RC1.TA531_RC_Y_act;
-					ScreenSz_1.DispY1[0] = TA531_RC1.TA531_RC_Y_act & 0xff;
-					ScreenSz_1.DispY1[1] = (TA531_RC1.TA531_RC_Y_act >> 8) & 0xff;
-					ScreenSz_1.DispY1[2] = (TA531_RC1.TA531_RC_Y_act >> 16) & 0xff;
-					ScreenSz_1.DispY1[3] = (TA531_RC1.TA531_RC_Y_act >> 24) & 0xff;
+					Clamp_Position(&TA531_RC1.TA531_RC_X_trg, &TA531_RC1.TA531_RC_Y_trg, false);
+					ScreenSz_1.DispX1_32b = TA531_RC1.TA531_RC_X_trg;
+					ScreenSz_1.DispX1[0] = TA531_RC1.TA531_RC_X_trg & 0xff;
+					ScreenSz_1.DispX1[1] = (TA531_RC1.TA531_RC_X_trg >> 8) & 0xff;
+					ScreenSz_1.DispX1[2] = (TA531_RC1.TA531_RC_X_trg >> 16) & 0xff;
+					ScreenSz_1.DispX1[3] = (TA531_RC1.TA531_RC_X_trg >> 24) & 0xff;
+					ScreenSz_1.DispY1_32b = TA531_RC1.TA531_RC_Y_trg;
+					ScreenSz_1.DispY1[0] = TA531_RC1.TA531_RC_Y_trg & 0xff;
+					ScreenSz_1.DispY1[1] = (TA531_RC1.TA531_RC_Y_trg >> 8) & 0xff;
+					ScreenSz_1.DispY1[2] = (TA531_RC1.TA531_RC_Y_trg >> 16) & 0xff;
+					ScreenSz_1.DispY1[3] = (TA531_RC1.TA531_RC_Y_trg >> 24) & 0xff;
 
 				SPI_Flash_Start(Flash_SPI);
 				HAL_Delay(1);
@@ -4682,11 +4684,11 @@ void MoC_Init() {
 		HAL_Delay(200);
 
 			if ((ScreenSz_1.DispX0_32b >= 0)
-					& (ScreenSz_1.DispX0_32b < ScreenSz_1.DispX1_32b)
-					& (ScreenSz_1.DispX1_32b <= XmaxLimit)
-					& (ScreenSz_1.DispY0_32b >= 0)
-					& (ScreenSz_1.DispY0_32b < ScreenSz_1.DispY1_32b)
-					& (ScreenSz_1.DispY1_32b <= YmaxLimit)) {
+					&& (ScreenSz_1.DispX0_32b < ScreenSz_1.DispX1_32b)
+					&& (ScreenSz_1.DispX1_32b <= XmaxLimit)
+					&& (ScreenSz_1.DispY0_32b >= 0)
+					&& (ScreenSz_1.DispY0_32b < ScreenSz_1.DispY1_32b)
+					&& (ScreenSz_1.DispY1_32b <= YmaxLimit)) {
 				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "XY Check Pass!");
 			} else {
 				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "XY Invalid->Def");
@@ -4724,6 +4726,10 @@ void MoC_Init() {
 				SPI_Flash_WtritEnable();
 				HAL_Delay(5);
 				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1, sizeof(int));
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "Skip Verify, Recal");
+				TA531_RC1_fg = 0;
+				TA531_Lock = 0;
+				return;
 			}
 	}	//////finish reset display xy
 
