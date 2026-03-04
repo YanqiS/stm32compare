@@ -177,6 +177,10 @@ uint8_t EncrypKey;
 uint8_t dateTimeBuffer[7];
 
 bool SW_UP, SW_UP_pre, SW_DW, SW_DW_pre, SW_LEFT, SW_LEFT_pre, SW_RIGHT, SW_RIGHT_pre, SW_BUTTON, SW_BUTTON_pre;
+uint8_t SW_UP_cnt = 0;
+uint8_t SW_DW_cnt = 0;
+uint8_t SW_LEFT_cnt = 0;
+uint8_t SW_RIGHT_cnt = 0;
 
 //W25Q64 	sector		block		page
 //8M/64m	 256	x	 64		x	 256
@@ -1182,7 +1186,7 @@ int main(void)
 
 			if (TA531_Lock == 0)
 			{
-			    if ((SW_UP == 1)&(SW_UP_pre == 1))
+			    if ((SW_UP == 1)&(SW_UP_cnt >= 3))
 			    {
 			        OLED_ShowString(OLED_I2C_ch ,OLED_type,10, 1, "Go X+");
 			        TA531_RC1.TA531_RC_X_trg = TA531_RC1.TA531_RC_X_act +50;
@@ -1196,7 +1200,7 @@ int main(void)
 			        Clamp_Position(&TA531_RC1.TA531_RC_X_trg, &TA531_RC1.TA531_RC_Y_trg, false);  // ← 添加限制
 			        TA531_RC1_fg = 2;
 			    }
-			    else if ((SW_DW == 1)&(SW_DW_pre == 1))
+			    else if ((SW_DW == 1)&(SW_DW_cnt >= 3))
 			    {
 			        OLED_ShowString(OLED_I2C_ch ,OLED_type,10, 1, "Go X-");
 			        TA531_RC1.TA531_RC_X_trg = TA531_RC1.TA531_RC_X_act -50;
@@ -1220,7 +1224,7 @@ int main(void)
 			        Clamp_Position(&TA531_RC1.TA531_RC_X_trg, &TA531_RC1.TA531_RC_Y_trg, false);  // ← 添加限制
 			        TA531_RC1_fg = 2;
 			    }
-			    else if ((SW_LEFT == 1)&(SW_LEFT_pre == 1))
+			    else if ((SW_LEFT == 1)&(SW_LEFT_cnt >= 3))
 			    {
 			        OLED_ShowString(OLED_I2C_ch ,OLED_type,10, 1, "Go Y-");
 			        TA531_RC1.TA531_RC_Y_trg = TA531_RC1.TA531_RC_Y_act -50;
@@ -1244,7 +1248,7 @@ int main(void)
 			        Clamp_Position(&TA531_RC1.TA531_RC_X_trg, &TA531_RC1.TA531_RC_Y_trg, false);  // ← 添加限制
 			        TA531_RC1_fg = 2;
 			    }
-			    else if ((SW_RIGHT == 1)&(SW_RIGHT_pre == 1))
+			    else if ((SW_RIGHT == 1)&(SW_RIGHT_cnt >= 3))
 			    {
 			        OLED_ShowString(OLED_I2C_ch ,OLED_type,10, 1, "Go Y+");
 			        TA531_RC1.TA531_RC_Y_trg = TA531_RC1.TA531_RC_Y_act +50;
@@ -3637,34 +3641,70 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		if (HAL_GPIO_ReadPin(SW_UP_GPIO_Port,SW_UP_Pin) == 0)
 		{
 			SW_UP = 1;
+			if (SW_UP_pre == 1)
+			{
+				SW_UP_cnt++;
+			}
+			else
+			{
+				SW_UP_cnt = 0;
+			}
 //			OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 3, "SW_UP     " );
 		}else
 		{
 			SW_UP = 0;
+			SW_UP_cnt = 0;
 		}
 		if (HAL_GPIO_ReadPin(SW_DOWN_GPIO_Port,SW_DOWN_Pin) == 0)
 		{
 			SW_DW = 1;
+			if (SW_DW_pre == 1)
+			{
+				SW_DW_cnt++;
+			}
+			else
+			{
+				SW_DW_cnt = 0;
+			}
 //			OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 3, "SW_DW     " );
 		}else
 		{
 			SW_DW = 0;
+			SW_DW_cnt = 0;
 		}
 		if (HAL_GPIO_ReadPin(SW_LEFT_GPIO_Port,SW_LEFT_Pin) == 0)
 		{
 			SW_LEFT = 1;
+			if (SW_LEFT_pre == 1)
+			{
+				SW_LEFT_cnt++;
+			}
+			else
+			{
+				SW_LEFT_cnt = 0;
+			}
 //			OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 3, "SW_LF     " );
 		}else
 		{
 			SW_LEFT = 0;
+			SW_LEFT_cnt = 0;
 		}
 		if (HAL_GPIO_ReadPin(SW_RIGHT_GPIO_Port,SW_RIGHT_Pin) == 0)
 		{
 			SW_RIGHT = 1;
+			if (SW_RIGHT_pre == 1)
+			{
+				SW_RIGHT_cnt++;
+			}
+			else
+			{
+				SW_RIGHT_cnt = 0;
+			}
 //			OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 3, "SW_RT     " );
 		}else
 		{
 			SW_RIGHT = 0;
+			SW_RIGHT_cnt = 0;
 		}
 		if (HAL_GPIO_ReadPin(SW_BUTTON_GPIO_Port,SW_BUTTON_Pin) == 0)
 		{
@@ -4358,16 +4398,17 @@ void MoC_Init() {
 				}
 
 				////push down
-					ScreenSz_1.DispX0_32b = TA531_RC1.TA531_RC_X_act;
-					ScreenSz_1.DispX0[0] = TA531_RC1.TA531_RC_X_act & 0xff;
-					ScreenSz_1.DispX0[1] = (TA531_RC1.TA531_RC_X_act >> 8) & 0xff;
-					ScreenSz_1.DispX0[2] = (TA531_RC1.TA531_RC_X_act >> 16) & 0xff;
-					ScreenSz_1.DispX0[3] = (TA531_RC1.TA531_RC_X_act >> 24) & 0xff;
-					ScreenSz_1.DispY0_32b = TA531_RC1.TA531_RC_Y_act;
-					ScreenSz_1.DispY0[0] = TA531_RC1.TA531_RC_Y_act & 0xff;
-					ScreenSz_1.DispY0[1] = (TA531_RC1.TA531_RC_Y_act >> 8) & 0xff;
-					ScreenSz_1.DispY0[2] = (TA531_RC1.TA531_RC_Y_act >> 16) & 0xff;
-					ScreenSz_1.DispY0[3] = (TA531_RC1.TA531_RC_Y_act >> 24) & 0xff;
+					Clamp_Position(&TA531_RC1.TA531_RC_X_trg, &TA531_RC1.TA531_RC_Y_trg, false);
+					ScreenSz_1.DispX0_32b = TA531_RC1.TA531_RC_X_trg;
+					ScreenSz_1.DispX0[0] = TA531_RC1.TA531_RC_X_trg & 0xff;
+					ScreenSz_1.DispX0[1] = (TA531_RC1.TA531_RC_X_trg >> 8) & 0xff;
+					ScreenSz_1.DispX0[2] = (TA531_RC1.TA531_RC_X_trg >> 16) & 0xff;
+					ScreenSz_1.DispX0[3] = (TA531_RC1.TA531_RC_X_trg >> 24) & 0xff;
+					ScreenSz_1.DispY0_32b = TA531_RC1.TA531_RC_Y_trg;
+					ScreenSz_1.DispY0[0] = TA531_RC1.TA531_RC_Y_trg & 0xff;
+					ScreenSz_1.DispY0[1] = (TA531_RC1.TA531_RC_Y_trg >> 8) & 0xff;
+					ScreenSz_1.DispY0[2] = (TA531_RC1.TA531_RC_Y_trg >> 16) & 0xff;
+					ScreenSz_1.DispY0[3] = (TA531_RC1.TA531_RC_Y_trg >> 24) & 0xff;
 
 				SPI_Flash_Start(Flash_SPI);
 				SPI_Flash_WtritEnable();
@@ -4492,16 +4533,17 @@ void MoC_Init() {
 				}
 
 				////push down
-					ScreenSz_1.DispX1_32b = TA531_RC1.TA531_RC_X_act;
-					ScreenSz_1.DispX1[0] = TA531_RC1.TA531_RC_X_act & 0xff;
-					ScreenSz_1.DispX1[1] = (TA531_RC1.TA531_RC_X_act >> 8) & 0xff;
-					ScreenSz_1.DispX1[2] = (TA531_RC1.TA531_RC_X_act >> 16) & 0xff;
-					ScreenSz_1.DispX1[3] = (TA531_RC1.TA531_RC_X_act >> 24) & 0xff;
-					ScreenSz_1.DispY1_32b = TA531_RC1.TA531_RC_Y_act;
-					ScreenSz_1.DispY1[0] = TA531_RC1.TA531_RC_Y_act & 0xff;
-					ScreenSz_1.DispY1[1] = (TA531_RC1.TA531_RC_Y_act >> 8) & 0xff;
-					ScreenSz_1.DispY1[2] = (TA531_RC1.TA531_RC_Y_act >> 16) & 0xff;
-					ScreenSz_1.DispY1[3] = (TA531_RC1.TA531_RC_Y_act >> 24) & 0xff;
+					Clamp_Position(&TA531_RC1.TA531_RC_X_trg, &TA531_RC1.TA531_RC_Y_trg, false);
+					ScreenSz_1.DispX1_32b = TA531_RC1.TA531_RC_X_trg;
+					ScreenSz_1.DispX1[0] = TA531_RC1.TA531_RC_X_trg & 0xff;
+					ScreenSz_1.DispX1[1] = (TA531_RC1.TA531_RC_X_trg >> 8) & 0xff;
+					ScreenSz_1.DispX1[2] = (TA531_RC1.TA531_RC_X_trg >> 16) & 0xff;
+					ScreenSz_1.DispX1[3] = (TA531_RC1.TA531_RC_X_trg >> 24) & 0xff;
+					ScreenSz_1.DispY1_32b = TA531_RC1.TA531_RC_Y_trg;
+					ScreenSz_1.DispY1[0] = TA531_RC1.TA531_RC_Y_trg & 0xff;
+					ScreenSz_1.DispY1[1] = (TA531_RC1.TA531_RC_Y_trg >> 8) & 0xff;
+					ScreenSz_1.DispY1[2] = (TA531_RC1.TA531_RC_Y_trg >> 16) & 0xff;
+					ScreenSz_1.DispY1[3] = (TA531_RC1.TA531_RC_Y_trg >> 24) & 0xff;
 
 				SPI_Flash_Start(Flash_SPI);
 				HAL_Delay(1);
@@ -4574,18 +4616,22 @@ void MoC_Init() {
 		SPI_Flash_ReadBytes(ScreenSz_1.DispX1, Sys_Addr_DispX1, sizeof(int));
 		SPI_Flash_ReadBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1, sizeof(int));
 
-		ScreenSz_1.DispX0_32b = ScreenSz_1.DispX0[0]
-				+ (ScreenSz_1.DispX0[1] << 8) + (ScreenSz_1.DispX0[2] << 16)
-				+ (ScreenSz_1.DispX0[3] << 24);
-		ScreenSz_1.DispX1_32b = ScreenSz_1.DispX1[0]
-				+ (ScreenSz_1.DispX1[1] << 8) + (ScreenSz_1.DispX1[2] << 16)
-				+ (ScreenSz_1.DispX1[3] << 24);
-		ScreenSz_1.DispY0_32b = ScreenSz_1.DispY0[0]
-				+ (ScreenSz_1.DispY0[1] << 8) + (ScreenSz_1.DispY0[2] << 16)
-				+ (ScreenSz_1.DispY0[3] << 24);
-		ScreenSz_1.DispY1_32b = ScreenSz_1.DispY1[0]
-				+ (ScreenSz_1.DispY1[1] << 8) + (ScreenSz_1.DispY1[2] << 16)
-				+ (ScreenSz_1.DispY1[3] << 24);
+		ScreenSz_1.DispX0_32b = (int32_t)((uint32_t)(uint8_t)ScreenSz_1.DispX0[0]
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispX0[1] << 8)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispX0[2] << 16)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispX0[3] << 24));
+		ScreenSz_1.DispX1_32b = (int32_t)((uint32_t)(uint8_t)ScreenSz_1.DispX1[0]
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispX1[1] << 8)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispX1[2] << 16)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispX1[3] << 24));
+		ScreenSz_1.DispY0_32b = (int32_t)((uint32_t)(uint8_t)ScreenSz_1.DispY0[0]
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispY0[1] << 8)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispY0[2] << 16)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispY0[3] << 24));
+		ScreenSz_1.DispY1_32b = (int32_t)((uint32_t)(uint8_t)ScreenSz_1.DispY1[0]
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispY1[1] << 8)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispY1[2] << 16)
+				| ((uint32_t)(uint8_t)ScreenSz_1.DispY1[3] << 24));
 
 	    // ⬅️⬅️⬅️ 添加调试输出 - 显示读取的原始字节
 	    char str1[16];
@@ -4618,21 +4664,18 @@ void MoC_Init() {
 	    // 显示转换后的32位值（10进制）
 	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 0, "32bit Values:");
 
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, "X0:");
-	    itoa(ScreenSz_1.DispX0_32b, str1, 10);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,3, 1, str1);
+	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, "                " );
+	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 2, "                " );
 
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,8, 1, "X1:");
-	    itoa(ScreenSz_1.DispX1_32b, str1, 10);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,11, 1, str1);
+	    snprintf(str1, sizeof(str1), "X0:%d", ScreenSz_1.DispX0_32b);
+	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, str1);
+	    snprintf(str1, sizeof(str1), "X1:%d", ScreenSz_1.DispX1_32b);
+	    OLED_ShowString(OLED_I2C_ch ,OLED_type,8, 1, str1);
 
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 2, "Y0:");
-	    itoa(ScreenSz_1.DispY0_32b, str1, 10);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,3, 2, str1);
-
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,8, 2, "Y1:");
-	    itoa(ScreenSz_1.DispY1_32b, str1, 10);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,11, 2, str1);
+	    snprintf(str1, sizeof(str1), "Y0:%d", ScreenSz_1.DispY0_32b);
+	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 2, str1);
+	    snprintf(str1, sizeof(str1), "Y1:%d", ScreenSz_1.DispY1_32b);
+	    OLED_ShowString(OLED_I2C_ch ,OLED_type,8, 2, str1);
 
 	    HAL_Delay(3000);  // 等待3秒让你看清
 
@@ -4641,11 +4684,11 @@ void MoC_Init() {
 		HAL_Delay(200);
 
 			if ((ScreenSz_1.DispX0_32b >= 0)
-					& (ScreenSz_1.DispX0_32b < ScreenSz_1.DispX1_32b)
-					& (ScreenSz_1.DispX1_32b <= XmaxLimit)
-					& (ScreenSz_1.DispY0_32b >= 0)
-					& (ScreenSz_1.DispY0_32b < ScreenSz_1.DispY1_32b)
-					& (ScreenSz_1.DispY1_32b <= YmaxLimit)) {
+					&& (ScreenSz_1.DispX0_32b < ScreenSz_1.DispX1_32b)
+					&& (ScreenSz_1.DispX1_32b <= XmaxLimit)
+					&& (ScreenSz_1.DispY0_32b >= 0)
+					&& (ScreenSz_1.DispY0_32b < ScreenSz_1.DispY1_32b)
+					&& (ScreenSz_1.DispY1_32b <= YmaxLimit)) {
 				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "XY Check Pass!");
 			} else {
 				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "XY Invalid->Def");
@@ -4683,6 +4726,10 @@ void MoC_Init() {
 				SPI_Flash_WtritEnable();
 				HAL_Delay(5);
 				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1, sizeof(int));
+				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "Skip Verify, Recal");
+				TA531_RC1_fg = 0;
+				TA531_Lock = 0;
+				return;
 			}
 	}	//////finish reset display xy
 
