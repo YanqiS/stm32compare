@@ -87,6 +87,7 @@ UART_HandleTypeDef *Serial_Num;
 #define LIGHT_SENSOR_INVERT	0	// 0: keep raw mapping; 1: invert when hardware is wired opposite
 #define MOTOR_POS_TOLERANCE	2
 #define MOTOR_MOVE_TIMEOUT_MS	6000
+#define DISP_COORD_BYTES	4U
 uint16_t adc_buffer[ADC_CHANNELS]={0};
 
 static uint8_t NormalizeLightSensor(uint16_t raw_adc)
@@ -114,6 +115,15 @@ static uint8_t EncodeLightAlarm(uint8_t light_level)
 		return 1;
 	}
 	return 0;
+}
+
+static int32_t DecodeLE32(const uint8_t data[DISP_COORD_BYTES])
+{
+	uint32_t value = ((uint32_t)data[0]) |
+					 ((uint32_t)data[1] << 8) |
+					 ((uint32_t)data[2] << 16) |
+					 ((uint32_t)data[3] << 24);
+	return (int32_t)value;
 }
 
 int Version_A		= 4	;	//Ver  A.BC
@@ -710,22 +720,22 @@ int main(void)
 	        // ⬅️⬅️⬅️ 重要：每次写入前都要加写使能！
 	        SPI_Flash_WtritEnable();
 	        HAL_Delay(5);
-	        SPI_Flash_WriteSomeBytes(clearData, Sys_Addr_DispX0, sizeof(int));
+	        SPI_Flash_WriteSomeBytes(clearData, Sys_Addr_DispX0, DISP_COORD_BYTES);
 	        HAL_Delay(50);
 
 	        SPI_Flash_WtritEnable();
 	        HAL_Delay(5);
-	        SPI_Flash_WriteSomeBytes(clearData, Sys_Addr_DispX1, sizeof(int));
+	        SPI_Flash_WriteSomeBytes(clearData, Sys_Addr_DispX1, DISP_COORD_BYTES);
 	        HAL_Delay(50);
 
 	        SPI_Flash_WtritEnable();
 	        HAL_Delay(5);
-	        SPI_Flash_WriteSomeBytes(clearData, Sys_Addr_DispY0, sizeof(int));
+	        SPI_Flash_WriteSomeBytes(clearData, Sys_Addr_DispY0, DISP_COORD_BYTES);
 	        HAL_Delay(50);
 
 	        SPI_Flash_WtritEnable();
 	        HAL_Delay(5);
-	        SPI_Flash_WriteSomeBytes(clearData, Sys_Addr_DispY1, sizeof(int));
+	        SPI_Flash_WriteSomeBytes(clearData, Sys_Addr_DispY1, DISP_COORD_BYTES);
 	        HAL_Delay(50);
 
 	        OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 0, "================");
@@ -813,9 +823,9 @@ int main(void)
 
 	SPI_Flash_WtritEnable();
 	HAL_Delay(5);
-	SPI_Flash_WriteSomeBytes(temp1, Sys_Addr_DispTest, sizeof(int));
+	SPI_Flash_WriteSomeBytes(temp1, Sys_Addr_DispTest, DISP_COORD_BYTES);
 	HAL_Delay(5);
-	SPI_Flash_ReadBytes(temp2, Sys_Addr_DispTest, sizeof(int));
+	SPI_Flash_ReadBytes(temp2, Sys_Addr_DispTest, DISP_COORD_BYTES);
 	while(temp1[0] != temp2[0])
 	{
 		OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, "Flash Test Err..");
@@ -826,9 +836,9 @@ int main(void)
 		SPI_Flash_Start(Flash_SPI);
 		HAL_Delay(5);
 
-		SPI_Flash_WriteSomeBytes(temp1, Sys_Addr_DispTest, sizeof(int));
+		SPI_Flash_WriteSomeBytes(temp1, Sys_Addr_DispTest, DISP_COORD_BYTES);
 		HAL_Delay(5);
-		SPI_Flash_ReadBytes(temp2, Sys_Addr_DispTest, sizeof(int));
+		SPI_Flash_ReadBytes(temp2, Sys_Addr_DispTest, DISP_COORD_BYTES);
 
 
 		itoa(temp1[0],str1,16);
@@ -4177,6 +4187,7 @@ static bool WaitMotorReached(int target_x, int target_y, uint32_t timeout_ms)
 	uint32_t tick = HAL_GetTick();
 	while ((HAL_GetTick() - tick) < timeout_ms)
 	{
+		MotoCtrl_PositionLoop(target_x, target_y);
 		if ((abs(TA531_RC1.TA531_RC_X_act - target_x) <= MOTOR_POS_TOLERANCE)
 				&& (abs(TA531_RC1.TA531_RC_Y_act - target_y) <= MOTOR_POS_TOLERANCE))
 		{
@@ -4373,15 +4384,15 @@ void MoC_Init() {
 				SPI_Flash_WtritEnable();
 				HAL_Delay(5);
 				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX0, Sys_Addr_DispX0,
-						sizeof(int));
+						DISP_COORD_BYTES);
 				HAL_Delay(5);
 				SPI_Flash_WtritEnable();
 				HAL_Delay(5);
 				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY0, Sys_Addr_DispY0,
-						sizeof(int));
+						DISP_COORD_BYTES);
 				HAL_Delay(5);
 				uint8_t temp1[4];	//temp3,temp4;
-				SPI_Flash_ReadBytes(temp1, Sys_Addr_DispX0, sizeof(int));
+				SPI_Flash_ReadBytes(temp1, Sys_Addr_DispX0, DISP_COORD_BYTES);
 
 					if ((temp1[0] != ScreenSz_1.DispX0[0]) || (temp1[1] != ScreenSz_1.DispX0[1]) ||
 					    (temp1[2] != ScreenSz_1.DispX0[2]) || (temp1[3] != ScreenSz_1.DispX0[3]))
@@ -4393,13 +4404,13 @@ void MoC_Init() {
 					    {
 					        SPI_Flash_WtritEnable();
 					        HAL_Delay(5);
-					        SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX0, Sys_Addr_DispX0, sizeof(int));
+					        SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX0, Sys_Addr_DispX0, DISP_COORD_BYTES);
 					        HAL_Delay(5);
-					        SPI_Flash_ReadBytes(temp1, Sys_Addr_DispX0, sizeof(int));
+					        SPI_Flash_ReadBytes(temp1, Sys_Addr_DispX0, DISP_COORD_BYTES);
 					    }
 					}
 
-				SPI_Flash_ReadBytes(temp1, Sys_Addr_DispY0, sizeof(int));
+				SPI_Flash_ReadBytes(temp1, Sys_Addr_DispY0, DISP_COORD_BYTES);
 				// ⬅️ | 改为 ||
 					if ((temp1[0] != ScreenSz_1.DispY0[0]) || (temp1[1] != ScreenSz_1.DispY0[1]) ||
 					    (temp1[2] != ScreenSz_1.DispY0[2]) || (temp1[3] != ScreenSz_1.DispY0[3]))
@@ -4411,9 +4422,9 @@ void MoC_Init() {
 					    {
 					        SPI_Flash_WtritEnable();
 					        HAL_Delay(5);
-					        SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY0, Sys_Addr_DispY0, sizeof(int));
+					        SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY0, Sys_Addr_DispY0, DISP_COORD_BYTES);
 					        HAL_Delay(5);
-					        SPI_Flash_ReadBytes(temp1, Sys_Addr_DispY0, sizeof(int));
+					        SPI_Flash_ReadBytes(temp1, Sys_Addr_DispY0, DISP_COORD_BYTES);
 					    }
 					}
 
@@ -4508,15 +4519,15 @@ void MoC_Init() {
 				SPI_Flash_WtritEnable();
 				HAL_Delay(5);
 				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX1, Sys_Addr_DispX1,
-						sizeof(int));
+						DISP_COORD_BYTES);
 				HAL_Delay(1);
 				SPI_Flash_WtritEnable();
 				HAL_Delay(5);
 				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1,
-						sizeof(int));
+						DISP_COORD_BYTES);
 				HAL_Delay(1);
 
-				SPI_Flash_ReadBytes(temp1, Sys_Addr_DispX1, sizeof(int));
+				SPI_Flash_ReadBytes(temp1, Sys_Addr_DispX1, DISP_COORD_BYTES);
 					if ((temp1[0] != ScreenSz_1.DispX1[0]) || (temp1[1] != ScreenSz_1.DispX1[1]) ||
 					    (temp1[2] != ScreenSz_1.DispX1[2]) || (temp1[3] != ScreenSz_1.DispX1[3]))
 					{
@@ -4527,13 +4538,13 @@ void MoC_Init() {
 					    {
 					        SPI_Flash_WtritEnable();
 					        HAL_Delay(5);
-					        SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX1, Sys_Addr_DispX1, sizeof(int));
+					        SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX1, Sys_Addr_DispX1, DISP_COORD_BYTES);
 					        HAL_Delay(5);
-					        SPI_Flash_ReadBytes(temp1, Sys_Addr_DispX1, sizeof(int));
+					        SPI_Flash_ReadBytes(temp1, Sys_Addr_DispX1, DISP_COORD_BYTES);
 					    }
 					}
 
-				SPI_Flash_ReadBytes(temp1, Sys_Addr_DispY1, sizeof(int));
+				SPI_Flash_ReadBytes(temp1, Sys_Addr_DispY1, DISP_COORD_BYTES);
 					if ((temp1[0] != ScreenSz_1.DispY1[0]) || (temp1[1] != ScreenSz_1.DispY1[1]) ||
 					    (temp1[2] != ScreenSz_1.DispY1[2]) || (temp1[3] != ScreenSz_1.DispY1[3]))
 					{
@@ -4544,9 +4555,9 @@ void MoC_Init() {
 					    {
 					        SPI_Flash_WtritEnable();
 					        HAL_Delay(5);
-					        SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1, sizeof(int));
+					        SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1, DISP_COORD_BYTES);
 					        HAL_Delay(5);
-					        SPI_Flash_ReadBytes(temp1, Sys_Addr_DispY1, sizeof(int));
+					        SPI_Flash_ReadBytes(temp1, Sys_Addr_DispY1, DISP_COORD_BYTES);
 					    }
 					}
 
@@ -4569,23 +4580,15 @@ void MoC_Init() {
 //		SPI_Flash_Start(Flash_SPI);
 
 		HAL_Delay(1);
-		SPI_Flash_ReadBytes(ScreenSz_1.DispX0, Sys_Addr_DispX0, sizeof(int));
-		SPI_Flash_ReadBytes(ScreenSz_1.DispY0, Sys_Addr_DispY0, sizeof(int));
-		SPI_Flash_ReadBytes(ScreenSz_1.DispX1, Sys_Addr_DispX1, sizeof(int));
-		SPI_Flash_ReadBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1, sizeof(int));
+		SPI_Flash_ReadBytes(ScreenSz_1.DispX0, Sys_Addr_DispX0, DISP_COORD_BYTES);
+		SPI_Flash_ReadBytes(ScreenSz_1.DispY0, Sys_Addr_DispY0, DISP_COORD_BYTES);
+		SPI_Flash_ReadBytes(ScreenSz_1.DispX1, Sys_Addr_DispX1, DISP_COORD_BYTES);
+		SPI_Flash_ReadBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1, DISP_COORD_BYTES);
 
-		ScreenSz_1.DispX0_32b = ScreenSz_1.DispX0[0]
-				+ (ScreenSz_1.DispX0[1] << 8) + (ScreenSz_1.DispX0[2] << 16)
-				+ (ScreenSz_1.DispX0[3] << 24);
-		ScreenSz_1.DispX1_32b = ScreenSz_1.DispX1[0]
-				+ (ScreenSz_1.DispX1[1] << 8) + (ScreenSz_1.DispX1[2] << 16)
-				+ (ScreenSz_1.DispX1[3] << 24);
-		ScreenSz_1.DispY0_32b = ScreenSz_1.DispY0[0]
-				+ (ScreenSz_1.DispY0[1] << 8) + (ScreenSz_1.DispY0[2] << 16)
-				+ (ScreenSz_1.DispY0[3] << 24);
-		ScreenSz_1.DispY1_32b = ScreenSz_1.DispY1[0]
-				+ (ScreenSz_1.DispY1[1] << 8) + (ScreenSz_1.DispY1[2] << 16)
-				+ (ScreenSz_1.DispY1[3] << 24);
+		ScreenSz_1.DispX0_32b = DecodeLE32(ScreenSz_1.DispX0);
+		ScreenSz_1.DispX1_32b = DecodeLE32(ScreenSz_1.DispX1);
+		ScreenSz_1.DispY0_32b = DecodeLE32(ScreenSz_1.DispY0);
+		ScreenSz_1.DispY1_32b = DecodeLE32(ScreenSz_1.DispY1);
 
 	    // ⬅️⬅️⬅️ 添加调试输出 - 显示读取的原始字节
 	    char str1[16];
@@ -4673,16 +4676,16 @@ void MoC_Init() {
 
 				SPI_Flash_WtritEnable();
 				HAL_Delay(5);
-				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX0, Sys_Addr_DispX0, sizeof(int));
+				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX0, Sys_Addr_DispX0, DISP_COORD_BYTES);
 				SPI_Flash_WtritEnable();
 				HAL_Delay(5);
-				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY0, Sys_Addr_DispY0, sizeof(int));
+				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY0, Sys_Addr_DispY0, DISP_COORD_BYTES);
 				SPI_Flash_WtritEnable();
 				HAL_Delay(5);
-				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX1, Sys_Addr_DispX1, sizeof(int));
+				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX1, Sys_Addr_DispX1, DISP_COORD_BYTES);
 				SPI_Flash_WtritEnable();
 				HAL_Delay(5);
-				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1, sizeof(int));
+				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1, DISP_COORD_BYTES);
 			}
 	}	//////finish reset display xy
 
