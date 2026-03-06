@@ -4254,11 +4254,12 @@ static bool WaitMotorReached(int target_x, int target_y, uint32_t timeout_ms)
 
 
 void MoC_Init() {
-	////42 MotorCtrl init
+	////42 MotorCtrl init (startup only: no XY reset/set/verify)
 	SPI_Stop(Flash_SPI);
 	HAL_Delay(10);
 	SPI_Flash_Start(Flash_SPI);
 	HAL_Delay(10);
+
 	MotorInit_M1 = 0;
 	MotorInit_M2 = 0;
 	MotorInit_M3 = 0;
@@ -4267,551 +4268,65 @@ void MoC_Init() {
 	MotorCtrl_M1.MotorCtrl_HostID = HostID;
 	MotorCtrl_M1.MotorCtrl_FuncType = 0x01;
 	MotorCtrl_M1.MotorCtrl_FuncCode = 0x01;
-	MotorCtrl_M1.MotorCtrl_ByteData = 0x01;		//06/07
+	MotorCtrl_M1.MotorCtrl_ByteData = 0x01;
 	MotorCtrl_M1.MotorCtrl_DataCode = 0x000000;
 
 	MotorCtrl_M2.MotorCtrl_HostID = HostID;
 	MotorCtrl_M2.MotorCtrl_FuncType = 0x01;
 	MotorCtrl_M2.MotorCtrl_FuncCode = 0x01;
-	MotorCtrl_M2.MotorCtrl_ByteData = 0x01;		//06/07
+	MotorCtrl_M2.MotorCtrl_ByteData = 0x01;
 	MotorCtrl_M2.MotorCtrl_DataCode = 0x000000;
-
-	MotorInit_M1 = 1;	//init wait
-	MotorInit_M2 = 1;	//init wait
-	MotoCtrl_PackSend12();
-	HAL_Delay(500);
-
-	while ((MotorInit_M1 != 2) | (MotorInit_M2 != 2)) {
-		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "M1&2 Init Wait ");
-//		HAL_Delay(500);
-		MotoCtrl_PackSend12();
-	}
-
-	char str1[16] = { 0 };
-
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 9, 0, "1 2");	// 9 11 13 15
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "M1&2 Init ok! ");
-
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "X: ");
-	itoa(M1_ID, str1, 16);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 2, str1);
-	itoa(TA531_RC1.TA531_RC_X_act, str1, 10);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 2, str1);
 
 	MotorCtrl_M3.MotorCtrl_HostID = HostID;
 	MotorCtrl_M3.MotorCtrl_FuncType = 0x01;
 	MotorCtrl_M3.MotorCtrl_FuncCode = 0x01;
-	MotorCtrl_M3.MotorCtrl_ByteData = 0x01;		//06/07
+	MotorCtrl_M3.MotorCtrl_ByteData = 0x01;
 	MotorCtrl_M3.MotorCtrl_DataCode = 0x000000;
 
-	MotorInit_M3 = 1;	//init wait
-	MotoCtrl_PackSend3();
-	HAL_Delay(500);
+	MotorInit_M1 = 1;
+	MotorInit_M2 = 1;
+	MotorInit_M3 = 1;
 
-	while (MotorInit_M3 != 2) {
-		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "M3 Init Wait ");
-		HAL_Delay(50);
+	uint32_t init_tick = HAL_GetTick();
+	while ((HAL_GetTick() - init_tick) < 5000)
+	{
+		if ((MotorInit_M1 == 2) && (MotorInit_M2 == 2) && (MotorInit_M3 == 2))
+		{
+			break;
+		}
+
+		MotoCtrl_PackSend12();
 		MotoCtrl_PackSend3();
+		HAL_Delay(30);
 	}
 
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 13, 0, "3 ");	// 9 11 13 15
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "M3 Initialized! ");
-
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, "Y: ");
-	itoa(M3_ID, str1, 16);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 4, 3, str1);
-	itoa(TA531_RC1.TA531_RC_Y_act, str1, 10);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 3, str1);
-
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Check TouchPen! ");
-	HAL_GPIO_WritePin(KL15_RELAY_GPIO_Port, KL15_RELAY_Pin, 1);	//F
-	HAL_Delay(700);
-	HAL_GPIO_WritePin(KL15_RELAY_GPIO_Port, KL15_RELAY_Pin, 0);	//F
-	HAL_Delay(500);
-
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "PuhUp Rst DispXY");
-	HAL_Delay(500);
-
-	if (SW_UP == 1)	////reset display xy
-			{
-			Sys_tune1();
-		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Hold Up 2s Reset");
-		HAL_Delay(800);
-		if (SW_UP == 1)	////reset display xy
-				{
-				Sys_tune1();
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Hold Up 1s Reset");
-			HAL_Delay(800);
-				Sys_tune1();
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Release & Reset");
-			HAL_Delay(2000);
-
-			if (SW_UP == 0)	// into reset display xy
-					{
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1,
-						"U/D/L/R Set X0Y0");
-				HAL_Delay(800);
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "X0:");
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 2, "Y0:");
-
-				while (SW_BUTTON == 0)	//no push down
-				{
-					SW_UP_pre = SW_UP;
-					SW_DW_pre = SW_DW;
-					SW_LEFT_pre = SW_LEFT;
-					SW_RIGHT_pre = SW_RIGHT;
-					SW_BUTTON_pre = SW_BUTTON;
-
-					SW_UP = (HAL_GPIO_ReadPin(SW_UP_GPIO_Port, SW_UP_Pin) == 0);
-					SW_DW = (HAL_GPIO_ReadPin(SW_DOWN_GPIO_Port, SW_DOWN_Pin) == 0);
-					SW_LEFT = (HAL_GPIO_ReadPin(SW_LEFT_GPIO_Port, SW_LEFT_Pin) == 0);
-					SW_RIGHT = (HAL_GPIO_ReadPin(SW_RIGHT_GPIO_Port, SW_RIGHT_Pin) == 0);
-					SW_BUTTON = (HAL_GPIO_ReadPin(SW_BUTTON_GPIO_Port, SW_BUTTON_Pin) == 0);
-
-					if ((SW_UP == 1) & (SW_UP_pre == 1)) {
-						TA531_RC1.TA531_RC_X_trg -= 10;
-						if (TA531_RC1.TA531_RC_X_trg < 0) {
-							TA531_RC1.TA531_RC_X_trg = 0;
-						}
-
-						TA531_RC1_fg = 2;
-					} else if ((SW_UP == 1) & (SW_UP_pre == 0)) {
-						TA531_RC1.TA531_RC_X_trg -= 2;
-						if (TA531_RC1.TA531_RC_X_trg < 0) {
-							TA531_RC1.TA531_RC_X_trg = 0;
-						}
-
-						TA531_RC1_fg = 2;
-					} else if ((SW_DW == 1) & (SW_DW_pre == 1)) {
-						TA531_RC1.TA531_RC_X_trg += 10;
-						TA531_RC1_fg = 2;
-					} else if ((SW_DW == 1) & (SW_DW_pre == 0)) {
-						TA531_RC1.TA531_RC_X_trg += 2;
-						TA531_RC1_fg = 2;
-					} else if ((SW_LEFT == 1) & (SW_LEFT_pre == 0)) {
-						TA531_RC1.TA531_RC_Y_trg -= 2;
-
-						if (TA531_RC1.TA531_RC_Y_trg < 0) {
-							TA531_RC1.TA531_RC_Y_trg = 0;
-						}
-						TA531_RC1_fg = 2;
-					} else if ((SW_LEFT == 1) & (SW_LEFT_pre == 1)) {
-						TA531_RC1.TA531_RC_Y_trg -= 10;
-
-						if (TA531_RC1.TA531_RC_Y_trg < 0) {
-							TA531_RC1.TA531_RC_Y_trg = 0;
-						}
-						TA531_RC1_fg = 2;
-					} else if ((SW_RIGHT == 1) & (SW_RIGHT_pre == 0)) {
-						TA531_RC1.TA531_RC_Y_trg += 2;
-
-						TA531_RC1_fg = 2;
-					} else if ((SW_RIGHT == 1) & (SW_RIGHT_pre == 1)) {
-						TA531_RC1.TA531_RC_Y_trg += 10;
-
-						TA531_RC1_fg = 2;
-					}
-
-					MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg,
-							TA531_RC1.TA531_RC_Y_trg);
-					HAL_Delay(300);
-
-					itoa(TA531_RC1.TA531_RC_X_trg, str1, 10);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 2, str1);
-					itoa(TA531_RC1.TA531_RC_Y_trg, str1, 10);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 2, str1);
-				}
-
-				////push down
-					ScreenSz_1.DispX0_32b = TA531_RC1.TA531_RC_X_act;
-					ScreenSz_1.DispX0[0] = TA531_RC1.TA531_RC_X_act & 0xff;
-					ScreenSz_1.DispX0[1] = (TA531_RC1.TA531_RC_X_act >> 8) & 0xff;
-					ScreenSz_1.DispX0[2] = (TA531_RC1.TA531_RC_X_act >> 16) & 0xff;
-					ScreenSz_1.DispX0[3] = (TA531_RC1.TA531_RC_X_act >> 24) & 0xff;
-					ScreenSz_1.DispY0_32b = TA531_RC1.TA531_RC_Y_act;
-					ScreenSz_1.DispY0[0] = TA531_RC1.TA531_RC_Y_act & 0xff;
-					ScreenSz_1.DispY0[1] = (TA531_RC1.TA531_RC_Y_act >> 8) & 0xff;
-					ScreenSz_1.DispY0[2] = (TA531_RC1.TA531_RC_Y_act >> 16) & 0xff;
-					ScreenSz_1.DispY0[3] = (TA531_RC1.TA531_RC_Y_act >> 24) & 0xff;
-
-				SPI_Flash_Start(Flash_SPI);
-				SPI_Flash_WtritEnable();
-				HAL_Delay(5);
-				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX0, Sys_Addr_DispX0,
-						DISP_COORD_BYTES);
-				HAL_Delay(5);
-				SPI_Flash_WtritEnable();
-				HAL_Delay(5);
-				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY0, Sys_Addr_DispY0,
-						DISP_COORD_BYTES);
-				HAL_Delay(5);
-				uint8_t temp1[4];	//temp3,temp4;
-				SPI_Flash_ReadBytes(temp1, Sys_Addr_DispX0, DISP_COORD_BYTES);
-
-					if ((temp1[0] != ScreenSz_1.DispX0[0]) || (temp1[1] != ScreenSz_1.DispX0[1]) ||
-					    (temp1[2] != ScreenSz_1.DispX0[2]) || (temp1[3] != ScreenSz_1.DispX0[3]))
-					{
-					    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, "WriteFlash Retry");
-					    uint8_t retry = 0;
-					    while (((temp1[0] != ScreenSz_1.DispX0[0]) || (temp1[1] != ScreenSz_1.DispX0[1]) ||
-					           (temp1[2] != ScreenSz_1.DispX0[2]) || (temp1[3] != ScreenSz_1.DispX0[3])) && (retry++ < 20))
-					    {
-					        SPI_Flash_WtritEnable();
-					        HAL_Delay(5);
-					        SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX0, Sys_Addr_DispX0, DISP_COORD_BYTES);
-					        HAL_Delay(5);
-					        SPI_Flash_ReadBytes(temp1, Sys_Addr_DispX0, DISP_COORD_BYTES);
-					    }
-					}
-
-				SPI_Flash_ReadBytes(temp1, Sys_Addr_DispY0, DISP_COORD_BYTES);
-				// ⬅️ | 改为 ||
-					if ((temp1[0] != ScreenSz_1.DispY0[0]) || (temp1[1] != ScreenSz_1.DispY0[1]) ||
-					    (temp1[2] != ScreenSz_1.DispY0[2]) || (temp1[3] != ScreenSz_1.DispY0[3]))
-					{
-					    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, "WriteFlash Retry");
-					    uint8_t retry = 0;
-					    while (((temp1[0] != ScreenSz_1.DispY0[0]) || (temp1[1] != ScreenSz_1.DispY0[1]) ||
-					           (temp1[2] != ScreenSz_1.DispY0[2]) || (temp1[3] != ScreenSz_1.DispY0[3])) && (retry++ < 20))
-					    {
-					        SPI_Flash_WtritEnable();
-					        HAL_Delay(5);
-					        SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY0, Sys_Addr_DispY0, DISP_COORD_BYTES);
-					        HAL_Delay(5);
-					        SPI_Flash_ReadBytes(temp1, Sys_Addr_DispY0, DISP_COORD_BYTES);
-					    }
-					}
-
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1,
-						"U/D/L/R Set X1Y1");
-				HAL_Delay(800);
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, "X1:");
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 8, 3, "Y1:");
-
-				while (SW_BUTTON == 0)	//no push down
-				{
-					SW_UP_pre = SW_UP;
-					SW_DW_pre = SW_DW;
-					SW_LEFT_pre = SW_LEFT;
-					SW_RIGHT_pre = SW_RIGHT;
-					SW_BUTTON_pre = SW_BUTTON;
-
-					SW_UP = (HAL_GPIO_ReadPin(SW_UP_GPIO_Port, SW_UP_Pin) == 0);
-					SW_DW = (HAL_GPIO_ReadPin(SW_DOWN_GPIO_Port, SW_DOWN_Pin) == 0);
-					SW_LEFT = (HAL_GPIO_ReadPin(SW_LEFT_GPIO_Port, SW_LEFT_Pin) == 0);
-					SW_RIGHT = (HAL_GPIO_ReadPin(SW_RIGHT_GPIO_Port, SW_RIGHT_Pin) == 0);
-					SW_BUTTON = (HAL_GPIO_ReadPin(SW_BUTTON_GPIO_Port, SW_BUTTON_Pin) == 0);
-
-					if ((SW_UP == 1) & (SW_UP_pre == 1)) {
-						TA531_RC1.TA531_RC_X_trg -= 10;
-						if (TA531_RC1.TA531_RC_X_trg < 0) {
-							TA531_RC1.TA531_RC_X_trg = 0;
-						}
-
-						TA531_RC1_fg = 2;
-					} else if ((SW_UP == 1) & (SW_UP_pre == 0)) {
-						TA531_RC1.TA531_RC_X_trg -= 2;
-						if (TA531_RC1.TA531_RC_X_trg < 0) {
-							TA531_RC1.TA531_RC_X_trg = 0;
-						}
-
-						TA531_RC1_fg = 2;
-					} else if ((SW_DW == 1) & (SW_DW_pre == 1)) {
-						TA531_RC1.TA531_RC_X_trg += 10;
-						TA531_RC1_fg = 2;
-					} else if ((SW_DW == 1) & (SW_DW_pre == 0)) {
-						TA531_RC1.TA531_RC_X_trg += 2;
-						TA531_RC1_fg = 2;
-					} else if ((SW_LEFT == 1) & (SW_LEFT_pre == 0)) {
-						TA531_RC1.TA531_RC_Y_trg -= 2;
-
-						if (TA531_RC1.TA531_RC_Y_trg < 0) {
-							TA531_RC1.TA531_RC_Y_trg = 0;
-						}
-						TA531_RC1_fg = 2;
-					} else if ((SW_LEFT == 1) & (SW_LEFT_pre == 1)) {
-						TA531_RC1.TA531_RC_Y_trg -= 10;
-
-						if (TA531_RC1.TA531_RC_Y_trg < 0) {
-							TA531_RC1.TA531_RC_Y_trg = 0;
-						}
-						TA531_RC1_fg = 2;
-					} else if ((SW_RIGHT == 1) & (SW_RIGHT_pre == 0)) {
-						TA531_RC1.TA531_RC_Y_trg += 2;
-
-						TA531_RC1_fg = 2;
-					} else if ((SW_RIGHT == 1) & (SW_RIGHT_pre == 1)) {
-						TA531_RC1.TA531_RC_Y_trg += 10;
-
-						TA531_RC1_fg = 2;
-					}
-
-					MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg,
-							TA531_RC1.TA531_RC_Y_trg);
-					HAL_Delay(300);
-
-					itoa(TA531_RC1.TA531_RC_X_trg, str1, 10);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 3, 3, str1);
-					itoa(TA531_RC1.TA531_RC_Y_trg, str1, 10);
-					OLED_ShowString(OLED_I2C_ch, OLED_type, 11, 3, str1);
-				}
-
-				////push down
-					ScreenSz_1.DispX1_32b = TA531_RC1.TA531_RC_X_act;
-					ScreenSz_1.DispX1[0] = TA531_RC1.TA531_RC_X_act & 0xff;
-					ScreenSz_1.DispX1[1] = (TA531_RC1.TA531_RC_X_act >> 8) & 0xff;
-					ScreenSz_1.DispX1[2] = (TA531_RC1.TA531_RC_X_act >> 16) & 0xff;
-					ScreenSz_1.DispX1[3] = (TA531_RC1.TA531_RC_X_act >> 24) & 0xff;
-					ScreenSz_1.DispY1_32b = TA531_RC1.TA531_RC_Y_act;
-					ScreenSz_1.DispY1[0] = TA531_RC1.TA531_RC_Y_act & 0xff;
-					ScreenSz_1.DispY1[1] = (TA531_RC1.TA531_RC_Y_act >> 8) & 0xff;
-					ScreenSz_1.DispY1[2] = (TA531_RC1.TA531_RC_Y_act >> 16) & 0xff;
-					ScreenSz_1.DispY1[3] = (TA531_RC1.TA531_RC_Y_act >> 24) & 0xff;
-
-				SPI_Flash_Start(Flash_SPI);
-				HAL_Delay(1);
-				SPI_Flash_WtritEnable();
-				HAL_Delay(5);
-				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX1, Sys_Addr_DispX1,
-						DISP_COORD_BYTES);
-				HAL_Delay(1);
-				SPI_Flash_WtritEnable();
-				HAL_Delay(5);
-				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1,
-						DISP_COORD_BYTES);
-				HAL_Delay(1);
-
-				SPI_Flash_ReadBytes(temp1, Sys_Addr_DispX1, DISP_COORD_BYTES);
-					if ((temp1[0] != ScreenSz_1.DispX1[0]) || (temp1[1] != ScreenSz_1.DispX1[1]) ||
-					    (temp1[2] != ScreenSz_1.DispX1[2]) || (temp1[3] != ScreenSz_1.DispX1[3]))
-					{
-					    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, "WriteFlash Retry");
-					    uint8_t retry = 0;
-					    while (((temp1[0] != ScreenSz_1.DispX1[0]) || (temp1[1] != ScreenSz_1.DispX1[1]) ||
-					           (temp1[2] != ScreenSz_1.DispX1[2]) || (temp1[3] != ScreenSz_1.DispX1[3])) && (retry++ < 20))
-					    {
-					        SPI_Flash_WtritEnable();
-					        HAL_Delay(5);
-					        SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX1, Sys_Addr_DispX1, DISP_COORD_BYTES);
-					        HAL_Delay(5);
-					        SPI_Flash_ReadBytes(temp1, Sys_Addr_DispX1, DISP_COORD_BYTES);
-					    }
-					}
-
-				SPI_Flash_ReadBytes(temp1, Sys_Addr_DispY1, DISP_COORD_BYTES);
-					if ((temp1[0] != ScreenSz_1.DispY1[0]) || (temp1[1] != ScreenSz_1.DispY1[1]) ||
-					    (temp1[2] != ScreenSz_1.DispY1[2]) || (temp1[3] != ScreenSz_1.DispY1[3]))
-					{
-					    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, "WriteFlash Retry");
-					    uint8_t retry = 0;
-					    while (((temp1[0] != ScreenSz_1.DispY1[0]) || (temp1[1] != ScreenSz_1.DispY1[1]) ||
-					           (temp1[2] != ScreenSz_1.DispY1[2]) || (temp1[3] != ScreenSz_1.DispY1[3])) && (retry++ < 20))
-					    {
-					        SPI_Flash_WtritEnable();
-					        HAL_Delay(5);
-					        SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1, DISP_COORD_BYTES);
-					        HAL_Delay(5);
-					        SPI_Flash_ReadBytes(temp1, Sys_Addr_DispY1, DISP_COORD_BYTES);
-					    }
-					}
-
-				////push down
-
-				////Display Area reset finish		//DispX0,DispX1,DispY0,DispY1;
-
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1,
-						"Reset XY finish!");
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2,
-						"                ");
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3,
-						"                ");
-
-			}	//finish reset display xy
-		}	//reset display xy comfirm
-	}	//reset display xy comfirm
-	else {	//DispX0,DispX1,DispY0,DispY1;
-
-//		SPI_Flash_Start(Flash_SPI);
-
-		HAL_Delay(1);
-		SPI_Flash_ReadBytes(ScreenSz_1.DispX0, Sys_Addr_DispX0, DISP_COORD_BYTES);
-		SPI_Flash_ReadBytes(ScreenSz_1.DispY0, Sys_Addr_DispY0, DISP_COORD_BYTES);
-		SPI_Flash_ReadBytes(ScreenSz_1.DispX1, Sys_Addr_DispX1, DISP_COORD_BYTES);
-		SPI_Flash_ReadBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1, DISP_COORD_BYTES);
-
-		ScreenSz_1.DispX0_32b = DecodeLE32(ScreenSz_1.DispX0);
-		ScreenSz_1.DispX1_32b = DecodeLE32(ScreenSz_1.DispX1);
-		ScreenSz_1.DispY0_32b = DecodeLE32(ScreenSz_1.DispY0);
-		ScreenSz_1.DispY1_32b = DecodeLE32(ScreenSz_1.DispY1);
-
-	    // ⬅️⬅️⬅️ 添加调试输出 - 显示读取的原始字节
-	    char str1[16];
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 0, "Raw Bytes:");
-
-	    // 显示X0的4个字节（16进制）
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, "X0:");
-	    itoa(ScreenSz_1.DispX0[0], str1, 16);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,3, 1, str1);
-	    itoa(ScreenSz_1.DispX0[1], str1, 16);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,5, 1, str1);
-	    itoa(ScreenSz_1.DispX0[2], str1, 16);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,7, 1, str1);
-	    itoa(ScreenSz_1.DispX0[3], str1, 16);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,9, 1, str1);
-
-	    // 显示X1的4个字节（16进制）
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 2, "X1:");
-	    itoa(ScreenSz_1.DispX1[0], str1, 16);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,3, 2, str1);
-	    itoa(ScreenSz_1.DispX1[1], str1, 16);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,5, 2, str1);
-	    itoa(ScreenSz_1.DispX1[2], str1, 16);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,7, 2, str1);
-	    itoa(ScreenSz_1.DispX1[3], str1, 16);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,9, 2, str1);
-
-	    HAL_Delay(2000);  // 等待2秒让你看清
-
-	    // 显示转换后的32位值（10进制）
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 0, "32bit Values:");
-
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 1, "X0:");
-	    itoa(ScreenSz_1.DispX0_32b, str1, 10);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,3, 1, str1);
-
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,8, 1, "X1:");
-	    itoa(ScreenSz_1.DispX1_32b, str1, 10);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,11, 1, str1);
-
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,0, 2, "Y0:");
-	    itoa(ScreenSz_1.DispY0_32b, str1, 10);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,3, 2, str1);
-
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,8, 2, "Y1:");
-	    itoa(ScreenSz_1.DispY1_32b, str1, 10);
-	    OLED_ShowString(OLED_I2C_ch ,OLED_type,11, 2, str1);
-
-	    HAL_Delay(3000);  // 等待3秒让你看清
-
-		HAL_Delay(10);
-		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Read XY fm Flash");
-		HAL_Delay(200);
-
-			if ((ScreenSz_1.DispX0_32b >= 0)
-					& (ScreenSz_1.DispX0_32b < ScreenSz_1.DispX1_32b)
-					& (ScreenSz_1.DispX1_32b <= XmaxLimit)
-					& (ScreenSz_1.DispY0_32b >= 0)
-					& (ScreenSz_1.DispY0_32b < ScreenSz_1.DispY1_32b)
-					& (ScreenSz_1.DispY1_32b <= YmaxLimit)) {
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "XY Check Pass!");
-			} else {
-				OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "XY Invalid->Def");
-				ScreenSz_1.DispX0_32b = 0;
-				ScreenSz_1.DispY0_32b = 0;
-				ScreenSz_1.DispX1_32b = XmaxLimit;
-				ScreenSz_1.DispY1_32b = YmaxLimit;
-
-				ScreenSz_1.DispX0[0] = ScreenSz_1.DispX0_32b & 0xff;
-				ScreenSz_1.DispX0[1] = (ScreenSz_1.DispX0_32b >> 8) & 0xff;
-				ScreenSz_1.DispX0[2] = (ScreenSz_1.DispX0_32b >> 16) & 0xff;
-				ScreenSz_1.DispX0[3] = (ScreenSz_1.DispX0_32b >> 24) & 0xff;
-				ScreenSz_1.DispY0[0] = ScreenSz_1.DispY0_32b & 0xff;
-				ScreenSz_1.DispY0[1] = (ScreenSz_1.DispY0_32b >> 8) & 0xff;
-				ScreenSz_1.DispY0[2] = (ScreenSz_1.DispY0_32b >> 16) & 0xff;
-				ScreenSz_1.DispY0[3] = (ScreenSz_1.DispY0_32b >> 24) & 0xff;
-				ScreenSz_1.DispX1[0] = ScreenSz_1.DispX1_32b & 0xff;
-				ScreenSz_1.DispX1[1] = (ScreenSz_1.DispX1_32b >> 8) & 0xff;
-				ScreenSz_1.DispX1[2] = (ScreenSz_1.DispX1_32b >> 16) & 0xff;
-				ScreenSz_1.DispX1[3] = (ScreenSz_1.DispX1_32b >> 24) & 0xff;
-				ScreenSz_1.DispY1[0] = ScreenSz_1.DispY1_32b & 0xff;
-				ScreenSz_1.DispY1[1] = (ScreenSz_1.DispY1_32b >> 8) & 0xff;
-				ScreenSz_1.DispY1[2] = (ScreenSz_1.DispY1_32b >> 16) & 0xff;
-				ScreenSz_1.DispY1[3] = (ScreenSz_1.DispY1_32b >> 24) & 0xff;
-
-				SPI_Flash_WtritEnable();
-				HAL_Delay(5);
-				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX0, Sys_Addr_DispX0, DISP_COORD_BYTES);
-				SPI_Flash_WtritEnable();
-				HAL_Delay(5);
-				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY0, Sys_Addr_DispY0, DISP_COORD_BYTES);
-				SPI_Flash_WtritEnable();
-				HAL_Delay(5);
-				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispX1, Sys_Addr_DispX1, DISP_COORD_BYTES);
-				SPI_Flash_WtritEnable();
-				HAL_Delay(5);
-				SPI_Flash_WriteSomeBytes(ScreenSz_1.DispY1, Sys_Addr_DispY1, DISP_COORD_BYTES);
-			}
-	}	//////finish reset display xy
-
-	TA531_RC1.TA531_RC_X_trg = ScreenSz_1.DispX0_32b;
-	TA531_RC1.TA531_RC_Y_trg = ScreenSz_1.DispY0_32b;
-	//				TA531_RC1.TA531_RC_Z_code = 1;
-	//				TA531_RC1.TA531_RC_Z_code2 = 0;
-		TA531_RC1_fg = 2;
-		MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg, TA531_RC1.TA531_RC_Y_trg);
-		if (!WaitMotorReached(TA531_RC1.TA531_RC_X_trg, TA531_RC1.TA531_RC_Y_trg, 8000))
-		{
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Verify X0Y0 Fail");
-			TA531_RC1_fg = 0;
-			return;
-		}
-
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "Trg: (");
-	itoa(TA531_RC1.TA531_RC_X_trg, str1, 10);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 2, str1);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 10, 2, ", ");
-	itoa(TA531_RC1.TA531_RC_Y_trg, str1, 10);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 2, str1);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 15, 2, ")");
-
-	HAL_Delay(1000);
-	HAL_GPIO_WritePin(KL15_RELAY_GPIO_Port, KL15_RELAY_Pin, 1);	//touch pen push
-	HAL_Delay(1000);
-	HAL_GPIO_WritePin(KL15_RELAY_GPIO_Port, KL15_RELAY_Pin, 0);	//touch pen release
-	HAL_Delay(200);
-
-	TA531_RC1.TA531_RC_X_trg = ScreenSz_1.DispX1_32b;
-	TA531_RC1.TA531_RC_Y_trg = ScreenSz_1.DispY1_32b;
-		TA531_RC1_fg = 2;
-		MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg, TA531_RC1.TA531_RC_Y_trg);
-		if (!WaitMotorReached(TA531_RC1.TA531_RC_X_trg, TA531_RC1.TA531_RC_Y_trg, 8000))
-		{
-			OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Verify X1Y1 Fail");
-			TA531_RC1_fg = 0;
-			return;
-		}
-
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "Trg: (");
-	itoa(TA531_RC1.TA531_RC_X_trg, str1, 10);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 2, str1);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 10, 2, ", ");
-	itoa(TA531_RC1.TA531_RC_Y_trg, str1, 10);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 2, str1);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 15, 2, ")");
-
-	HAL_Delay(1000);
-	HAL_GPIO_WritePin(KL15_RELAY_GPIO_Port, KL15_RELAY_Pin, 1);	//touch pen push
-	HAL_Delay(1000);
-	HAL_GPIO_WritePin(KL15_RELAY_GPIO_Port, KL15_RELAY_Pin, 0);	//touch pen release
-	HAL_Delay(200);
-
-	TA531_RC1_fg = 2;
-		TA531_RC1.TA531_RC_X_trg = ScreenSz_1.DispX1_32b;
-		TA531_RC1.TA531_RC_Y_trg = ScreenSz_1.DispY1_32b;
-		MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg, TA531_RC1.TA531_RC_Y_trg);
-
-	itoa(TA531_RC1.TA531_RC_X_trg, str1, 10);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 6, 2, str1);
-	itoa(TA531_RC1.TA531_RC_Y_trg, str1, 10);
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 12, 2, str1);
-
-	HAL_Delay(1000);
-
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, "Act: (");
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 10, 3, ", ");
-	OLED_ShowString(OLED_I2C_ch, OLED_type, 15, 3, ")");
-
+	if ((MotorInit_M1 != 2) || (MotorInit_M2 != 2) || (MotorInit_M3 != 2))
+	{
+		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Motor Init Warn ");
+	}
+	else
+	{
+		OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 1, "Motor Init OK   ");
+	}
+
+	UpdateXActualFromDualMotors();
+	TA531_RC1.TA531_RC_Y_act = -(MotorCtrl_M3.M_Position - 10);
+
+	TA531_RC1.TA531_RC_X_trg = TA531_RC1.TA531_RC_X_act;
+	TA531_RC1.TA531_RC_Y_trg = TA531_RC1.TA531_RC_Y_act;
+	TA531_RC1.TA531_RC_Z_code = 0;
+	TA531_RC1.TA531_RC_Reset = 0;
+	TA531_RC1_fg = 1;
+
+	ScreenSz_1.DispX0_32b = 0;
+	ScreenSz_1.DispY0_32b = 0;
+	ScreenSz_1.DispX1_32b = XmaxLimit;
+	ScreenSz_1.DispY1_32b = YmaxLimit;
+
+	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 2, "CAN/SW Ready    ");
+	OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 3, "No boot verify  ");
 }
+
 
 void MotoCtrl_PackSend12() {
 	MotrCtrl_1_DATA[0] = (MotorCtrl_M1.MotorCtrl_HostID >> 3) & 0xff;
