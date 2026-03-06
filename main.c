@@ -88,6 +88,8 @@ UART_HandleTypeDef *Serial_Num;
 #define MOTOR_POS_TOLERANCE	2
 #define MOTOR_MOVE_TIMEOUT_MS	6000
 #define DISP_COORD_BYTES	4U
+#define MOTOR_X_SYNC_TOLERANCE	3
+#define MOTOR_X_SKEW_LIMIT	12
 uint16_t adc_buffer[ADC_CHANNELS]={0};
 
 static uint8_t NormalizeLightSensor(uint16_t raw_adc)
@@ -426,6 +428,9 @@ void Motor_Protection_Reset(void);
 uint8_t Motor_Protection_Check(int16_t current_X, int16_t current_Y,
                                 int16_t target_X, int16_t target_Y);
 void Motor_Protection_EmergencyStop(void);
+int MotorXSkewAbs(void);
+bool IsXDualMotorAtTarget(int target_x, int tolerance);
+void UpdateXActualFromDualMotors(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -1031,7 +1036,7 @@ int main(void)
 //			OLED_ShowString(OLED_I2C_ch ,OLED_type,15, 1, str1);
 
 
-			if (abs(TA531_RC1.TA531_RC_X_act - TA531_RC1.TA531_RC_X_trg) <= MOTOR_POS_TOLERANCE)
+			if (IsXDualMotorAtTarget(TA531_RC1.TA531_RC_X_trg, MOTOR_POS_TOLERANCE))
 			{
 				TA531_RC1_x_ready = 1;
 			}
@@ -1057,6 +1062,14 @@ int main(void)
 			{
 				MotoCtrl_PositionLoop(TA531_RC1.TA531_RC_X_trg , TA531_RC1.TA531_RC_Y_trg);
 
+				if (MotorXSkewAbs() > MOTOR_X_SKEW_LIMIT)
+				{
+					Motor_Protection.protection_triggered = 1;
+					Motor_Protection.error_type = 4;
+					Motor_Protection_EmergencyStop();
+					break;
+				}
+
 //				itoa(TA531_RC1.TA531_RC_X_trg ,str1,10);
 //				OLED_ShowString(OLED_I2C_ch ,OLED_type,6, 2, str1);
 //				itoa(TA531_RC1.TA531_RC_Y_trg ,str1,10);
@@ -1076,7 +1089,7 @@ int main(void)
 				        break;
 				    }
 
-				if (abs(TA531_RC1.TA531_RC_X_act - TA531_RC1.TA531_RC_X_trg) <= MOTOR_POS_TOLERANCE)
+				if (IsXDualMotorAtTarget(TA531_RC1.TA531_RC_X_trg, MOTOR_POS_TOLERANCE))
 				{
 					TA531_RC1_x_ready = 1;
 				}
@@ -3558,8 +3571,7 @@ void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
 						if ((MotorInit_M1 == 2)&(buf_rec[2] == 0x42))	//X_Position
 						{
 							MotorCtrl_M1.M_Position = (buf_rec[3] + (buf_rec[4]<< 8) + (buf_rec[5]<< 16) + (buf_rec[6]<< 24))/160 ;
-
-							TA531_RC1.TA531_RC_X_act = -(MotorCtrl_M1.M_Position - 10);
+							UpdateXActualFromDualMotors();
 						}
 
 						if ((buf_rec[7]>> 4 )>0)	//
@@ -3580,6 +3592,7 @@ void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
 						if ((MotorInit_M2 == 2)&(buf_rec[2] == 0x42))	//X_Position
 						{
 							MotorCtrl_M2.M_Position = (buf_rec[3] + (buf_rec[4]<< 8) + (buf_rec[5]<< 16) + (buf_rec[6]<< 24))/160 ;
+							UpdateXActualFromDualMotors();
 						}
 
 						if ((buf_rec[7]>> 4 )>0)	//
@@ -4182,13 +4195,54 @@ uint32_t mRead_ADC1_ch(uint8_t ch)
 	return mVoltage;
 }
 
+int MotorXSkewAbs(void)
+{
+	int m1_x = -(MotorCtrl_M1.M_Position - 10);
+	int m2_x = -(MotorCtrl_M2.M_Position - 10);
+	return abs(m1_x - m2_x);
+}
+
+bool IsXDualMotorAtTarget(int target_x, int tolerance)
+{
+	int m1_x = -(MotorCtrl_M1.M_Position - 10);
+	int m2_x = -(MotorCtrl_M2.M_Position - 10);
+
+	if (abs(m1_x - target_x) > tolerance)
+	{
+		return false;
+	}
+	if (abs(m2_x - target_x) > tolerance)
+	{
+		return false;
+	}
+	if (abs(m1_x - m2_x) > MOTOR_X_SYNC_TOLERANCE)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+void UpdateXActualFromDualMotors(void)
+{
+	int m1_x = -(MotorCtrl_M1.M_Position - 10);
+	int m2_x = -(MotorCtrl_M2.M_Position - 10);
+	TA531_RC1.TA531_RC_X_act = (m1_x + m2_x) / 2;
+}
+
 static bool WaitMotorReached(int target_x, int target_y, uint32_t timeout_ms)
 {
 	uint32_t tick = HAL_GetTick();
 	while ((HAL_GetTick() - tick) < timeout_ms)
 	{
 		MotoCtrl_PositionLoop(target_x, target_y);
-		if ((abs(TA531_RC1.TA531_RC_X_act - target_x) <= MOTOR_POS_TOLERANCE)
+
+		if (MotorXSkewAbs() > MOTOR_X_SKEW_LIMIT)
+		{
+			return false;
+		}
+
+		if (IsXDualMotorAtTarget(target_x, MOTOR_POS_TOLERANCE)
 				&& (abs(TA531_RC1.TA531_RC_Y_act - target_y) <= MOTOR_POS_TOLERANCE))
 		{
 			return true;
@@ -5321,12 +5375,15 @@ void Motor_Protection_EmergencyStop(void) {
         case 2:
             sprintf(error_msg, "ERR:Motor Stuck!");
             break;
-        case 3:
-            sprintf(error_msg, "ERR:Timeout!    ");
-            break;
-        default:
-            sprintf(error_msg, "ERR:Unknown!    ");
-            break;
+		case 3:
+			sprintf(error_msg, "ERR:Timeout!    ");
+			break;
+		case 4:
+			sprintf(error_msg, "ERR:X Axis Skew!");
+			break;
+		default:
+			sprintf(error_msg, "ERR:Unknown!    ");
+			break;
     }
 
     OLED_ShowString(OLED_I2C_ch, OLED_type, 0, 0, error_msg);
